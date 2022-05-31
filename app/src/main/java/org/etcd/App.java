@@ -3,13 +3,7 @@
  */
 package org.etcd;
 
-import java.util.concurrent.CompletableFuture;
-
-import io.etcd.jetcd.ByteSequence;
-import io.etcd.jetcd.Client;
-import io.etcd.jetcd.KV;
-import io.etcd.jetcd.kv.GetResponse;
-import io.etcd.jetcd.options.GetOption;
+import org.dynamicconfig.DynamicConfig;
 
 public class App {
     public String getGreeting() {
@@ -17,23 +11,20 @@ public class App {
     }
 
     public static void main(String[] args) {
-        ByteSequence username = ByteSequence.from("CRYPTO".getBytes());
-        ByteSequence password = ByteSequence.from("CRYPTO1234".getBytes());
-        Client client = Client.builder().endpoints("http://localhost:2479").password(password).user(username).build();
+        DynamicConfig dynamicConfig = DynamicConfig.builder().endpoints("http://localhost:2479")
+                .setAuth("CRYPTO", "CRYPTO1234").build();
 
-        KV kvClient = client.getKVClient();
-
-        ByteSequence key = ByteSequence.from("config/CRYPTO".getBytes());
-        kvClient.get(key);
-
-        GetOption getOption = GetOption.newBuilder().isPrefix(true).build();
-        CompletableFuture<GetResponse> getFuture = kvClient.get(key, getOption);
-        try {
-            GetResponse response = getFuture.get();
-            System.out.println(response.getCount());
-        } catch (Exception e) {
-            System.out.println(e);
+        for (int i = 0; i < 10000; i++) {
+            try {
+                String sellValue = dynamicConfig.getSingleConfig("SELL_VALUE");
+                System.out.printf("%d, %s \n", i, sellValue);
+            } catch (Exception e) {
+                System.out.println(e);
+            }
         }
+
+        // need to close the client in order to kill the thread
+        dynamicConfig.getClient().close();
 
     }
 }
