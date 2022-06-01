@@ -14,7 +14,7 @@ public class App {
         DynamicConfig dynamicConfig = DynamicConfig.builder().endpoints("http://localhost:2479")
                 .setAuth("CRYPTO", "CRYPTO1234").build();
 
-        for (int i = 0; i < 10000; i++) {
+        for (int i = 0; i < 10; i++) {
             try {
                 String sellValue = dynamicConfig.getSingleConfig("SELL_VALUE");
                 System.out.printf("%d, %s \n", i, sellValue);

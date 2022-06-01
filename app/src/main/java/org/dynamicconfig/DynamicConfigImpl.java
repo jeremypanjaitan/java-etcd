@@ -2,6 +2,8 @@ package org.dynamicconfig;
 
 import java.util.List;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Client;
 import io.etcd.jetcd.KV;
@@ -26,7 +28,7 @@ public class DynamicConfigImpl implements DynamicConfig {
 
     @Override
     public String getSingleConfig(String configName)
-            throws java.lang.InterruptedException, java.util.concurrent.ExecutionException {
+            throws java.lang.InterruptedException, java.util.concurrent.ExecutionException, JsonProcessingException {
 
         ByteSequence usedKey = ByteSequence
                 .from(String.format(SERVICE_CONFIG, this.serviceName, configName).getBytes());
@@ -34,8 +36,10 @@ public class DynamicConfigImpl implements DynamicConfig {
 
         ByteSequence actualKey = ByteSequence
                 .from(usedConfig.getBytes());
-        String config = getConfig(actualKey);
-        return config;
+        String configValue = getConfig(actualKey);
+        DCLog.logInfoConfig(this.getClass(),
+                new Config(configName, configValue, getConfigVersion(configName)));
+        return configValue;
     }
 
     @Override
@@ -44,13 +48,17 @@ public class DynamicConfigImpl implements DynamicConfig {
     }
 
     private String getConfig(ByteSequence key)
-            throws java.lang.InterruptedException, java.util.concurrent.ExecutionException {
+            throws java.lang.InterruptedException, java.util.concurrent.ExecutionException, JsonProcessingException {
         KV kvClient = client.getKVClient();
         GetOption getOption = GetOption.newBuilder().isPrefix(true).build();
         GetResponse response = kvClient.get(key, getOption).get();
         List<KeyValue> keyValues = response.getKvs();
         kvClient.close();
         return new String(keyValues.get(0).getValue().getBytes());
+    }
+
+    private String getConfigVersion(String configName) {
+        return configName.split("/")[configName.split("/").length - 1];
     }
 
 }
