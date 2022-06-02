@@ -3,6 +3,9 @@
  */
 package org.etcd;
 
+import java.util.List;
+
+import org.dynamicconfig.Config;
 import org.dynamicconfig.DynamicConfig;
 
 public class App {
@@ -14,13 +17,11 @@ public class App {
         DynamicConfig dynamicConfig = DynamicConfig.builder().endpoints("http://localhost:2479")
                 .setAuth("CRYPTO", "CRYPTO1234").build();
 
-        for (int i = 0; i < 10; i++) {
-            try {
-                String sellValue = dynamicConfig.getSingleConfig("SELL_VALUE");
-                System.out.printf("%d, %s \n", i, sellValue);
-            } catch (Exception e) {
-                System.out.println(e);
-            }
+        try {
+            List<Config> configs = dynamicConfig.getMultipleConfig(3);
+            System.out.println(configs.toString());
+        } catch (Exception e) {
+            System.out.println(e);
         }
 
         // need to close the client in order to kill the thread

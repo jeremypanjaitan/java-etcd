@@ -35,4 +35,8 @@ public class Config {
         this.version = version;
     }
 
+    static Config createConfig(String configName, String configValue, String version) {
+        return new Config(configName, configValue, version);
+    }
+
 }

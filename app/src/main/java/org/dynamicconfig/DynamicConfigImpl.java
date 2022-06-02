@@ -1,5 +1,6 @@
 package org.dynamicconfig;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -32,14 +33,38 @@ public class DynamicConfigImpl implements DynamicConfig {
 
         ByteSequence usedKey = ByteSequence
                 .from(String.format(SERVICE_CONFIG, this.serviceName, configName).getBytes());
-        String usedConfig = getConfig(usedKey);
+        String usedConfig = getSingleValue(usedKey);
 
         ByteSequence actualKey = ByteSequence
                 .from(usedConfig.getBytes());
-        String configValue = getConfig(actualKey);
+        String configValue = getSingleValue(actualKey);
         DCLog.logInfoConfig(this.getClass(),
-                new Config(configName, configValue, getConfigVersion(configName)));
+                Config.createConfig(configName, configValue, getConfigVersion(configName)));
         return configValue;
+    }
+
+    @Override
+    public List<Config> getMultipleConfig(long amount)
+            throws java.lang.InterruptedException, java.util.concurrent.ExecutionException, JsonProcessingException {
+
+        ByteSequence usedKey = ByteSequence
+                .from(String.format(SERVICE_CONFIG, this.serviceName, "").getBytes());
+
+        List<KeyValue> values = getMultipleValue(usedKey, amount);
+
+        ArrayList<Config> configs = new ArrayList<>();
+
+        for (KeyValue value : values) {
+            String actualKey = new String(value.getValue().getBytes());
+
+            String configName = getConfigName(actualKey);
+            String configValue = getSingleValue(ByteSequence.from(actualKey.getBytes()));
+
+            Config config = Config.createConfig(configName, configValue, getConfigVersion(actualKey));
+            DCLog.logInfoConfig(this.getClass(), config);
+            configs.add(config);
+        }
+        return configs;
     }
 
     @Override
@@ -47,18 +72,35 @@ public class DynamicConfigImpl implements DynamicConfig {
         return this.client;
     }
 
-    private String getConfig(ByteSequence key)
-            throws java.lang.InterruptedException, java.util.concurrent.ExecutionException, JsonProcessingException {
+    private String getSingleValue(ByteSequence key)
+            throws java.lang.InterruptedException, java.util.concurrent.ExecutionException {
+
         KV kvClient = client.getKVClient();
         GetOption getOption = GetOption.newBuilder().isPrefix(true).build();
         GetResponse response = kvClient.get(key, getOption).get();
         List<KeyValue> keyValues = response.getKvs();
+
         kvClient.close();
         return new String(keyValues.get(0).getValue().getBytes());
     }
 
+    private List<KeyValue> getMultipleValue(ByteSequence key, long limit)
+            throws java.lang.InterruptedException, java.util.concurrent.ExecutionException {
+
+        KV kvClient = client.getKVClient();
+        GetOption getOption = GetOption.newBuilder().isPrefix(true).withLimit(limit).build();
+        GetResponse response = kvClient.get(key, getOption).get();
+
+        kvClient.close();
+        return response.getKvs();
+    }
+
     private String getConfigVersion(String configName) {
         return configName.split("/")[configName.split("/").length - 1];
+    }
+
+    private String getConfigName(String configName) {
+        return configName.split("/")[3];
     }
 
 }
